@@ -34,26 +34,26 @@ public class LanguageModel {
     /** Builds a language model from the text in the given file (the corpus). */
 	public void train(String fileName) {
 		In in = new In(fileName);
-        String s = "";
+        String window = "";
         for (int i = 0; i < windowLength; i++)
         {
-            s += in.readChar();
+            window += in.readChar();
         }
 
         while (!in.isEmpty())
         {
             char c = in.readChar();
-            if (CharDataMap.containsKey(s))
+            if (CharDataMap.containsKey(window))
             {
-                CharDataMap.get(s).update(c);
+                CharDataMap.get(window).update(c);
             }   
             else 
             {
                 List lst = new List();
                 lst.update(c);
-                CharDataMap.put(s,lst);
+                CharDataMap.put(window,lst);
             }
-            s = s.substring(1) + c;
+            window = window.substring(1) + c;
         }
         
         for(List val : CharDataMap.values())
@@ -65,43 +65,33 @@ public class LanguageModel {
     // Computes and sets the probabilities (p and cp fields) of all the
 	// characters in the given list. */
 	void calculateProbabilities(List probs) {				
-		Node current = new Node(probs.getFirst());				
-		ListIterator lst = new ListIterator(current);
+		ListIterator it = probs.listIterator(0);
         int totalCount = 0;
-        CharData cd;
-        while (lst.hasNext())
-        {
-            cd = lst.next();
-            totalCount += cd.count;
+        while (it.hasNext()) {
+            totalCount += it.next().count;
         }
-
-        ListIterator lst2 = new ListIterator(current);
-        double cp = 0;
-        while (lst2.hasNext())
-        {
-            cd = lst2.next();
-            double p = (double) cd.count / totalCount;
-            cd.p = p;
-            cp = p + cp;
-            cd.cp = cp; 
+        it = probs.listIterator(0);
+        double cumulativeProb = 0;
+        while (it.hasNext()) {
+            CharData cd = it.next();
+            cd.p = (double) cd.count / totalCount;
+            cumulativeProb += cd.p;
+            cd.cp = cumulativeProb;
         }
 	}
 
     // Returns a random character from the given probabilities list.
 	char getRandomChar(List probs) {
-		double r = Math.random();
-
-        ListIterator lst = probs.listIterator(0);
-        while (lst.hasNext())
-        {
-            CharData cd = lst.next();
-            if (cd.cp > r) 
-            {
+	    double r = randomGenerator.nextDouble();
+        ListIterator it = probs.listIterator(0);
+        while (it.hasNext()) {
+            CharData cd = it.next();
+            if (cd.cp > r) {
                 return cd.chr;
             }
         }
-		return ' ';
-	}
+        return probs.get(probs.getSize() - 1).chr;
+    }
 
     /**
 	 * Generates a random text, based on the probabilities that were learned during training. 
